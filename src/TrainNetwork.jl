@@ -1,10 +1,11 @@
 using Flux
 using Random
 using Flux.Data: DataLoader
-using Flux: onehotbatch, onecold, onehot, @epochs
+using Flux: onehotbatch, onecold, onehot
 using NNlib
 using DelimitedFiles
 using Parameters
+
 
 function training(MSA, AA_dict, params, data, device)
     # train network on the full input data

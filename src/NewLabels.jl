@@ -1,6 +1,18 @@
 using DelimitedFiles
+using Serialization
+using Pkg
+Pkg.add("Flux")
+using Flux
+
+include("DataPreparation.jl")
+include("ModelDefinitions.jl")
+include("Evaluation.jl")
+include("Parameters.jl")
+include("TrainNetwork.jl")
 
 # after creating NN that in evaluateNetwork.jl saved as m
+m = deserialize("model.dat")
+dict = deserialize("dict.dat")
 
 # choose data to label (AIV or MTB)
 file_name = "./data/NS1/NS1_H5_H7_Train2.csv"
@@ -9,6 +21,8 @@ file_name = "./data/NS1/NS1_H5_H7_Test.csv"
 #file_name = "./data/Tubercolosis/Tb_Test.csv"
 
 secTrain = readdlm(file_name, ',')
+
+
 
 # function to encode data, and run evaluateNetwork for all data points
 function evaluateTestData(model, MSA, AA_dict)
