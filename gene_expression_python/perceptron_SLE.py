@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.utils import to_categorical
 
 # Load the count matrix
-counts = pd.read_csv('/Users/victorenglof/Downloads/GSE112087_counts-matrix-EnsembIDs-GRCh37.p10(1).txt', sep='\t', index_col=0)
+counts = pd.read_csv("C:/Users/victo/Downloads/count_matrix.txt.txt", sep='\t', index_col=0)
 
 sample_names = counts.columns
 # Create a decision column based on sample names
