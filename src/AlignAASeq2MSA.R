@@ -5,10 +5,21 @@ getwd()
 set.seed(0)
 
 # load the necessary packages
+# Install packages
+install.packages("Biostrings")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("msa")
+
+install.packages("dplyr")
+install.packages("ape")
+
+# Load packages
 library(Biostrings)
 library(msa)
 library(dplyr)
 library(ape)
+
 
 # read the MSA
 df <- read.csv("../data/NS1/NS1.csv", header = T, colClasses = "character")
@@ -58,3 +69,4 @@ seq <- strsplit(unmasked(aligned_seq)[pos] %>% as.character, '')%>%
 
 # save aligned sequence to fasta file
 write.csv(seq, "../data/NS1/alignedSeq.fa")
+

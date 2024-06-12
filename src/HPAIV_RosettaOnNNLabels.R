@@ -11,7 +11,7 @@ library(R.ROSETTA)
 # ======================= Build RBM on NN output ==============================
 
 # load data
-dat <- read.csv("../data/NS1/NewTrain2.csv", header = F, colClasses = "character")
+dat <- read.csv("../data/NS1/NewTrain2_python.csv", header = F, colClasses = "character")
 
 # change names of truth and prediction
 names(dat)[dim(dat)[2] - 1] = "True"
