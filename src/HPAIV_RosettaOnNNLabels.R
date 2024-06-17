@@ -4,6 +4,11 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
 set.seed(0)
 
+install.packages("devtools")
+library(devtools)
+install_github("komorowskilab/R.ROSETTA")
+library(R.ROSETTA)
+
 # load necessary packages
 library(dplyr)
 library(R.ROSETTA)
@@ -11,8 +16,7 @@ library(R.ROSETTA)
 # ======================= Build RBM on NN output ==============================
 
 # load data
-dat <- read.csv("../data/NS1/NewTrain2_python.csv", header = F, colClasses = "character")
-
+dat <- read.csv("../data/NS1/Pred_labels_train2.csv", header = F, colClasses = "character", skip = 1)
 # change names of truth and prediction
 names(dat)[dim(dat)[2] - 1] = "True"
 names(dat)[dim(dat)[2]] = "Prediction"
@@ -43,7 +47,7 @@ viewRules(rec)
 # ======================== Test RBM on NN output ==============================
 
 # load test set
-test <- read.csv("../data/NS1/NewTest.csv", colClasses = "character", header = F)
+test <- read.csv("../data/NS1/Pred_labels_test.csv", colClasses = "character", header = F, skip = 1)
 
 # extract data and NN label
 test_truth <- test[,(dim(test)[2] - 1)]
@@ -104,7 +108,7 @@ ros_tmp1$quality
 rec_tmp1 <- recalculateRules(df_tmp1[,1:(dim(df_tmp1)[2] - 1)], ros_tmp1$main, discrete = T)
 
 viewRules(rec_tmp1[rec_tmp1$decision == 1,])
-viewRules(rec_tmp1[rec_tmp1$decision == 0,])
+ viewRules(rec_tmp1[rec_tmp1$decision == 0,])
 
 # run Rosetta again to find further differences that might help to distinguish between those objects
 

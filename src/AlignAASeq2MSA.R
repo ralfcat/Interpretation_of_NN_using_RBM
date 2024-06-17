@@ -1,3 +1,5 @@
+install.packages("rstudioapi")
+
 # Flush r-studio and set working directory 
 rm(list = ls())
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))

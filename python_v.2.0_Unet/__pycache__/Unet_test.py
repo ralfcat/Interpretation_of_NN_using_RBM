@@ -95,8 +95,9 @@ class FineTunedSequenceUNET(Model):
         x = self.flatten(x)
         x = self.dropout(x, training=training)  # Apply dropout only during training
         return self.dense(x)
-"""
+
 # TRYING TO ADD MORE LAYERS
+"""
 class FineTunedSequenceUNET(Model):
     def __init__(self, base_model, num_classes, dropout_rate=0.5):
         super(FineTunedSequenceUNET, self).__init__()
@@ -126,7 +127,6 @@ class FineTunedSequenceUNET(Model):
         x = self.bn3(x, training=training)
         x = self.dropout3(x, training=training)
         return self.output_dense(x)
-
 # Learning rate scheduler function
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -159,6 +159,7 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
     val_loss, val_accuracy = fold_model.evaluate(val_dataset_fold)
     print(f'Fold {fold} - Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}')
 """
+"""
 for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
     print(f"Processing fold {fold}...")
     X_train_fold, X_val_fold = X_values[train_index], X_values[val_index]
@@ -178,7 +179,7 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
 
     val_loss, val_accuracy = fold_model.evaluate(val_dataset_fold)
     print(f'Fold {fold} - Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}')
-
+"""
 # Reinitialize and train a final model on the full training set
 base_model = models.load_trained_model(model='patho_finetune', download=True)
 final_model = FineTunedSequenceUNET(base_model, num_classes=num_classes, dropout_rate=0.5)
@@ -201,26 +202,42 @@ print(f'Test Loss: {test_loss2}, Test Accuracy: {test_accuracy2}')
 
 # Load the dataset for which you want to assign new labels
 new_data_file_path = 'C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/NS1_H5_H7_Train2.csv'
+new_data_file_path2 = 'C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/NS1_H5_H7_Test.csv'
 new_data = pd.read_csv(new_data_file_path, header=None)
+new_data2 = pd.read_csv(new_data_file_path2, header=None)
 new_data.columns = columns
+new_data2.columns = columns
 
 # Drop the 'id' column and separate features and labels for new data
 X_new = new_data.drop(columns=['Pathogenicity'])
 y_new = new_data['Pathogenicity']
 
+X_new2 = new_data2.drop(columns=['Pathogenicity'])
+y_new2 = new_data2['Pathogenicity']
+
 # One-hot encode and pad the new data
 X_new_encoded = np.array([one_hot_encode(seq) for seq in X_new.values])
 padded_X_new_encoded = add_padding(X_new_encoded)
+
+X_new_encoded2 = np.array([one_hot_encode(seq) for seq in X_new2.values])
+padded_X_new_encoded2 = add_padding(X_new_encoded2)
 
 # Predict labels for the new dataset
 predictions = final_model.predict(padded_X_new_encoded)
 predicted_labels = (predictions > 0.5).astype(int).flatten()
 
+predictions2 = final_model.predict(padded_X_new_encoded2)
+predicted_labels2 = (predictions2 > 0.5).astype(int).flatten()
+
 # Add the predicted labels as a new column next to the real labels
 new_data['Predicted_Pathogenicity'] = predicted_labels
 
+new_data2['Predicted_Pathogenicity'] = predicted_labels2
+
 # Save the dataset with the new predictions
-labled_data_path = "C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/NS1_H5_H7_Train2_with_Predictions.csv"
+labled_data_path = "C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_train2.csv"
+labled_data_path2 = "C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_test.csv"
 new_data.to_csv(labled_data_path, index=False)
+new_data2.to_csv(labled_data_path2, index=False)
 
 print("New labels assigned and saved successfully.")
