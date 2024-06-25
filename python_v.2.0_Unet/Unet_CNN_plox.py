@@ -93,7 +93,6 @@ X_test_encoded = MSA_encode(X_test, AA_dict)
 X_test2_encoded = MSA_encode(X_test2, AA_dict)
 
 # Add padding to ensure the sequence length is divisible by the model's downsampling factor
-# Assuming the downsampling factor is 2^3=8 for a typical UNET
 def add_padding(X_encoded, factor=8):
     sequence_length = X_encoded.shape[1]
     target_length = ((sequence_length - 1) // factor + 1) * factor
@@ -115,48 +114,69 @@ train_dataset = tf.data.Dataset.from_tensor_slices((padded_X_train_encoded, y_tr
 test_dataset = tf.data.Dataset.from_tensor_slices((padded_X_test_encoded, y_test)).batch(32)
 test2_dataset = tf.data.Dataset.from_tensor_slices((padded_X_test2_encoded, y_test2)).batch(32)
 
-# Define the CNN model
-class SimpleCNN(Model):
+# Define the improved CNN model
+class ImprovedCNN(Model):
     def __init__(self, num_classes, dropout_rate=0.5):
-        super(SimpleCNN, self).__init__()
-        self.flatten = Flatten()
-        self.dense1 = Dense(256, activation='relu', kernel_regularizer=l2(0.01))
+        super(ImprovedCNN, self).__init__()
+        self.conv1 = Conv1D(64, kernel_size=3, activation='relu', kernel_regularizer=l2(0.01))
+        self.pool1 = MaxPooling1D(pool_size=2)
         self.bn1 = BatchNormalization()
-        self.dropout1 = Dropout(dropout_rate)
-        self.dense2 = Dense(128, activation='relu', kernel_regularizer=l2(0.01))
+        
+        self.conv2 = Conv1D(128, kernel_size=3, activation='relu', kernel_regularizer=l2(0.01))
+        self.pool2 = MaxPooling1D(pool_size=2)
         self.bn2 = BatchNormalization()
-        self.dropout2 = Dropout(dropout_rate)
-        self.dense3 = Dense(64, activation='relu', kernel_regularizer=l2(0.01))
+        
+        self.conv3 = Conv1D(256, kernel_size=3, activation='relu', kernel_regularizer=l2(0.01))
+        self.pool3 = MaxPooling1D(pool_size=2)
         self.bn3 = BatchNormalization()
-        self.dropout3 = Dropout(dropout_rate)
-        self.output_dense = Dense(num_classes, activation='sigmoid')
+        
+        self.conv4 = Conv1D(512, kernel_size=3, activation='relu', kernel_regularizer=l2(0.01))
+        self.pool4 = MaxPooling1D(pool_size=2)
+        self.bn4 = BatchNormalization()
+
+        self.global_pool = GlobalAveragePooling1D()
+        self.dropout = Dropout(dropout_rate)
+        self.dense1 = Dense(256, activation='relu', kernel_regularizer=l2(0.01))
+        self.dense2 = Dense(num_classes, activation='sigmoid')
 
     def call(self, inputs, training=False):
-        x = self.flatten(inputs)
-        x = self.dense1(x)
+        x = self.conv1(inputs)
+        x = self.pool1(x)
         x = self.bn1(x, training=training)
-        x = self.dropout1(x, training=training)
-        x = self.dense2(x)
+        
+        x = self.conv2(x)
+        x = self.pool2(x)
         x = self.bn2(x, training=training)
-        x = self.dropout2(x, training=training)
-        x = self.dense3(x)
+        
+        x = self.conv3(x)
+        x = self.pool3(x)
         x = self.bn3(x, training=training)
-        x = self.dropout3(x, training=training)
-        return self.output_dense(x)
+        
+        x = self.conv4(x)
+        x = self.pool4(x)
+        x = self.bn4(x, training=training)
+        
+        x = self.global_pool(x)
+        x = self.dropout(x, training=training)
+        x = self.dense1(x)
+        return self.dense2(x)
 
-# Instantiate and compile the CNN model
-final_model = SimpleCNN(num_classes=1, dropout_rate=0.5)
+# Instantiate and compile the improved CNN model
+final_model = ImprovedCNN(num_classes=1, dropout_rate=0.5)
 final_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
 def scheduler(epoch, lr):
     if epoch < 10:
         return lr
     else:
         return lr * tf.math.exp(-0.1)
+
 # Setup callbacks for training
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 lr_scheduler = LearningRateScheduler(scheduler)
+
 # Train the model
-history = final_model.fit(train_dataset, epochs=15, validation_data=test_dataset, callbacks=[early_stopping,lr_scheduler])
+history = final_model.fit(train_dataset, epochs=15, validation_data=test_dataset, callbacks=[early_stopping, lr_scheduler])
 
 # Evaluate the model
 test_loss, test_accuracy = final_model.evaluate(test_dataset)
@@ -187,7 +207,7 @@ plt.grid(True)
 plt.show()
 
 # Optionally: Save the trained model
-# cnn_model.save('path_to_save_model')
+# final_model.save('path_to_save_model')
 
 # Load the dataset for which you want to assign new labels
 new_data_file_path = 'C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/NS1_H5_H7_Train2.csv'

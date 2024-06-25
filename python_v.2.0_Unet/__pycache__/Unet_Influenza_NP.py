@@ -16,36 +16,47 @@ print(keras.__version__)
 #####################     TRAIN AND FINE TUNE THE SEQUENCE UNET MODEL (Patho_finetune)    ##################################
 #####################                                                                     ##################################
 
-train_data = pd.read_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NP/Project1.csv',delimiter='\t')
+# Load the dataset with tab as the delimiter
+file_path = 'C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/Project1.csv'
+train_data = pd.read_csv(file_path, delimiter='\t')
+
+# Clean column names to remove any leading/trailing whitespace
 train_data.columns = train_data.columns.str.strip()
+
 # Determine the class distribution
 class_counts = train_data['Pathogenicity'].value_counts()
 
 # Calculate the number of samples needed for each class to retain balance
 sample_counts = (class_counts / 3).astype(int)
 
-# Initialize an empty DataFrame for the new dataset
+# Initialize an empty DataFrame for the new test dataset
 sampled_data = pd.DataFrame()
 
-# Sample from each class
+# Sample from each class and remove these instances from the training set
 for class_label, count in sample_counts.items():
     class_data = train_data[train_data['Pathogenicity'] == class_label]
     sampled_class_data = class_data.sample(count, random_state=42)
     sampled_data = pd.concat([sampled_data, sampled_class_data])
+    train_data = train_data.drop(sampled_class_data.index)
 
-# Shuffle the new dataset
+# Shuffle the new test dataset
 sampled_data = sampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
 
-# Save or use the new dataset
-sampled_data.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NP/NewData_willbe_labeled.csv', index=False)
+# Save the new test dataset
+sampled_data.to_csv('C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/NewData_willbe_labeled.csv', index=False)
 
-
+# Save the updated training dataset
+train_data.to_csv('C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/Updated_TrainData.csv', index=False)
+test_data = pd.read_csv('C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/NewData_willbe_labeled.csv')
 
 
 # Drop the 'id' column and separate features and labels for training data
-X_train = train_data.drop(columns=['Pathogenicity'])
+X_train = train_data.drop(columns=['id','Pathogenicity'])
 y_train = train_data['Pathogenicity']
 
+# Drop the 'id' column and separate features and labels for test data
+X_test = test_data.drop(columns=['Pathogenicity'])
+y_test = test_data['Pathogenicity']
 
 # Convert categorical features to numerical (one-hot encoding)
 amino_acids = 'ACDEFGHIKLMNPQRSTVWY'  # 20 standard amino acids
@@ -59,7 +70,7 @@ def one_hot_encode(sequence):
     return encoded
 
 X_train_encoded = np.array([one_hot_encode(seq) for seq in X_train.values])
-
+X_test_encoded = np.array([one_hot_encode(seq) for seq in X_test.values])
 
 # Add padding to ensure the sequence length is divisible by the model's downsampling factor
 # Assuming the downsampling factor is 2^3=8 for a typical UNET
@@ -71,15 +82,15 @@ def add_padding(X_encoded):
     return padded_X_encoded
 
 padded_X_train_encoded = add_padding(X_train_encoded)
-
+padded_X_test_encoded = add_padding(X_test_encoded)
 
 # Convert to TensorFlow Datasets
 train_dataset = tf.data.Dataset.from_tensor_slices((padded_X_train_encoded, y_train)).batch(32)
-
+test_dataset = tf.data.Dataset.from_tensor_slices((padded_X_test_encoded, y_test)).batch(32)
 # Define the fine-tuned model
 
 ## THIS WORKS !!!! 
-"""
+
 class FineTunedSequenceUNET(Model):
     def __init__(self, base_model, num_classes, dropout_rate=0.5):
         super(FineTunedSequenceUNET, self).__init__()
@@ -95,6 +106,8 @@ class FineTunedSequenceUNET(Model):
         return self.dense(x)
 
 # TRYING TO ADD MORE LAYERS
+
+
 """
 class FineTunedSequenceUNET(Model):
     def __init__(self, base_model, num_classes, dropout_rate=0.5):
@@ -125,6 +138,7 @@ class FineTunedSequenceUNET(Model):
         x = self.bn3(x, training=training)
         x = self.dropout3(x, training=training)
         return self.output_dense(x)
+"""
 # Learning rate scheduler function
 def scheduler(epoch, lr):
     if epoch < 10:
@@ -135,7 +149,7 @@ def scheduler(epoch, lr):
 num_classes = 1  # Binary classification (pathogenic or not)
 
 # Perform cross-validation
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
+kf = KFold(n_splits=10, shuffle=True, random_state=42)
 X_values = padded_X_train_encoded
 y_values = y_train.values
 """"
@@ -157,7 +171,8 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
     val_loss, val_accuracy = fold_model.evaluate(val_dataset_fold)
     print(f'Fold {fold} - Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}')
 """
-model_path = models.download_trained_model("patho_finetune", root="models", model_format="tf", use_ftp=False)
+
+"""
 for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
     print(f"Processing fold {fold}...")
     X_train_fold, X_val_fold = X_values[train_index], X_values[val_index]
@@ -167,17 +182,17 @@ for fold, (train_index, val_index) in enumerate(kf.split(X_values), 1):
     val_dataset_fold = tf.data.Dataset.from_tensor_slices((X_val_fold, y_val_fold)).batch(32)
 
     # Load the pre-trained model for each fold
-    base_model = models.load_trained_model(model='patho_finetune', download=True, model_format='tf', use_ftp=False)
+    base_model = models.load_trained_model(model='patho_finetune', download=True)
     fold_model = FineTunedSequenceUNET(base_model, num_classes=num_classes, dropout_rate=0.5)
     fold_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     lr_scheduler = LearningRateScheduler(scheduler)
 
-    fold_model.fit(train_dataset_fold, validation_data=val_dataset_fold, epochs=20, callbacks=[lr_scheduler])
+    fold_model.fit(train_dataset_fold, validation_data=val_dataset_fold, epochs=50, callbacks=[lr_scheduler])
 
     val_loss, val_accuracy = fold_model.evaluate(val_dataset_fold)
     print(f'Fold {fold} - Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}')
-
+"""
 # Reinitialize and train a final model on the full training set
 base_model = models.load_trained_model(model='patho_finetune', download=True)
 final_model = FineTunedSequenceUNET(base_model, num_classes=num_classes, dropout_rate=0.5)
@@ -187,20 +202,22 @@ final_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accu
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 lr_scheduler = LearningRateScheduler(scheduler)
 
-final_model.fit(train_dataset, epochs=20, callbacks=[early_stopping, lr_scheduler])
+final_model.fit(train_dataset, epochs=50, validation_data = test_dataset, callbacks=[early_stopping, lr_scheduler])
 
+test_loss, test_accuracy = final_model.evaluate(test_dataset)
+print(f'Test Loss: {test_loss}, Test Accuracy: {test_accuracy}')
 # Evaluate the final model on the test set
 
 
 ##############  USE THE FINE-TUNED MODEL TO ASSIGN NEW LABELS TO DATA   #########################
 
 # Load the dataset for which you want to assign new labels
-new_data_file_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NP/NewData_willbe_labeled.csv'
-new_data = pd.read_csv(new_data_file_path, header=None)
+new_data_file_path = 'C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/NewData_willbe_labeled.csv'
+new_data = pd.read_csv(new_data_file_path)
 
 
 # Drop the 'id' column and separate features and labels for new data
-X_new = new_data.drop(columns=['Pathogenicity'])
+X_new = new_data.drop(columns=['id','Pathogenicity'])
 y_new = new_data['Pathogenicity']
 
 
@@ -218,7 +235,7 @@ new_data['Predicted_Pathogenicity'] = predicted_labels
 
 
 # Save the dataset with the new predictions
-labled_data_path = "/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NP/Predicted_labels_NP.csv"
+labled_data_path = "C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NP/Predicted_labels_NP.csv"
 new_data.to_csv(labled_data_path, index=False)
 
 print("New labels assigned and saved successfully.")
