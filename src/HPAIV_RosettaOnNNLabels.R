@@ -8,31 +8,62 @@ install.packages("devtools")
 library(devtools)
 install_github("komorowskilab/R.ROSETTA")
 library(R.ROSETTA)
-
+install.packages("dplyr")
 # load necessary packages
 library(dplyr)
 library(R.ROSETTA)
+if (!requireNamespace("arules", quietly = TRUE)) install.packages("arules")
+
+# Load necessary packages
+library(arules)
 
 # ======================= Build RBM on NN output ==============================
 
-# load data
-dat <- read.csv("../data/NS1/Pred_labels_train2.csv", header = F, colClasses = "character", skip = 1)
-# change names of truth and prediction
-names(dat)[dim(dat)[2] - 1] = "True"
-names(dat)[dim(dat)[2]] = "Prediction"
+# Load the dataset
+spambase_data <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/spambase_train2_labeled.csv", colClasses = "character")
 
-# extract true labels
-truth <- dat[,(dim(dat)[2] - 1)]
+# Change names of truth and prediction
+names(spambase_data)[dim(spambase_data)[2] - 1] = "True"
+names(spambase_data)[dim(spambase_data)[2]] = "Prediction"
 
-# remove truth label from data frame
-df <- dat[,c(1:(dim(dat)[2] - 2), dim(dat)[2])]
+# Extract true labels
+truth <- spambase_data[,(dim(spambase_data)[2] - 1)]
+
+# Remove truth label from data frame
+df <- spambase_data[,c(1:(dim(spambase_data)[2] - 2), dim(spambase_data)[2])]
+
+# Determine which columns are continuous and need binning
+continuous_columns <- colnames(df)[1:(ncol(df) - 1)]
+
+# Convert columns to numeric if they are not already
+for (col in continuous_columns) {
+  df[[col]] <- as.numeric(df[[col]])
+}
+
+# Apply equal frequency binning to each continuous column
+for (col in continuous_columns) {
+  df[[col]] <- discretize(df[[col]], method = "frequency", breaks = 10)  # Adjust the number of breaks as needed
+}
+
+# Display the first few rows of the discretized dataset to verify the changes
+head(df)
+
+
+
 
 # create reversed data frame and data frame containing positions 85-89
 rev_df <- dat[,c((dim(dat)[2] - 2):1, dim(dat)[2])]
 centre_df <- dat[,c(85:89, dim(dat)[2])]
 
-# run Rosetta on all three data frame
-ros <- rosetta(df, discrete = T, underSample = T, reducer = "Johnson")
+Sys.setenv(PATH = paste("/opt/homebrew/bin", Sys.getenv("PATH"), sep=":"))
+system("wine --version")
+
+
+ros <- rosetta(df, discrete = TRUE, underSample = TRUE, reducer = "Johnson")
+
+# Check the results
+summary(ros)
+viewRules(ros$main)
 rev_ros <- rosetta(rev_df, discrete = T, underSample = T, reducer = "Johnson")
 centre_ros <- rosetta(centre_df, discrete = T, underSample = T, reducer = "Genetic")
 
