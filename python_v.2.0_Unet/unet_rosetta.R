@@ -37,8 +37,12 @@ comb <- data.frame(rbind(ros$main, rev_ros$main, centre_ros$main))
 rec <- recalculateRules(df, comb, discrete = T)
 rec <- distinct(rec[rec$pValue<=0.05,])
 
+testie_rec <- distinct(testie[testie$pValue<=0.05,])
+
 # check rules
 viewRules(rec)
+
+viewRules(testie_rec)
 
 # ======================== Test RBM on NN output ==============================
 
@@ -56,7 +60,9 @@ pred <- predictClass(test_df[,1:(dim(test_df)[2] - 1)], rec, discrete = T, valid
 pred$accuracy
 table(pred$out[,c("currentClass", "predictedClass")])
 
-
+pred_test <- predictClass(test_df[,1:(dim(test_df)[2] - 1)], testie_rec, discrete = T, validate = T, defClass = test_df[,dim(test_df)[2]], normalizeMethod = "rulnum")
+pred_test$accuracy
+table(pred_test$out[,c("currentClass", "predictedClass")])
 # ================= Analysis of wrongly classified objects ====================
 
 # extract wrongly classified objects
