@@ -4,7 +4,6 @@ from sklearn.model_selection import train_test_split
 # Load the dataset
 path = '/Users/victorenglof/Downloads/spambase.csv'
 data = pd.read_csv(path)
-
 # Check for missing values
 missing_values = data.isnull().sum()
 print("Missing values in each column:\n", missing_values)

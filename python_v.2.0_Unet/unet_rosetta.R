@@ -11,7 +11,7 @@ library(R.ROSETTA)
 # ======================= Build RBM on NN output ==============================
 
 # load data
-dat <- read.csv("C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_train2.csv", header = T, colClasses = "character")
+dat <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_train2.csv", header = T, colClasses = "character")
 
 # change names of truth and prediction
 names(dat)[dim(dat)[2] - 1] = "True"
@@ -47,7 +47,7 @@ viewRules(testie_rec)
 # ======================== Test RBM on NN output ==============================
 
 # load test set
-test <- read.csv("C:/Users/victo/Documents/GitHub/Interpretation_of_NN_using_RBM/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_test.csv", colClasses = "character", header = T)
+test <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/data/NS1/Pred_labels_test.csv", colClasses = "character", header = T)
 
 # extract data and NN label
 test_truth <- test[,(dim(test)[2] - 1)]
@@ -91,9 +91,11 @@ heatmap(as.matrix(x), scale = "none", Colv = F, col = c("white", "black"),
 viewRules(rec[c(12, 9, 14, 15, 16, 21, 8, 25, 19, 7, 11, 13),])
 viewRules(rec[c(22, 10, 17, 20, 18, 23),])
 
+viewRules(rec[c(23,24,30,12,18),])
+
 # extract all objects with those objects
 
-df_tmp1 <- filter(dat, c(V85 == "T" & V86 == "I" & V87 == "A" & V88 == "S" & V89 == "V"))
+df_tmp1 <- filter(dat, c(P85 == "T" & P86 == "I" & P87 == "A" & P88 == "S" & P89 == "V"))
 
 df_tmp2 <- filter(dat, c(V27 == "M" & V208 == "N" & V100 == "I" & V222 == "G" & V63 == "K"
                          & V54 == "L" & V6 == "I" & V85 == "A" & V111 == "E" & V89 == "S"))

@@ -84,8 +84,13 @@ print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_test_pred))
 
 # Predict labels for the train2 dataset and save
 train2_data['Predicted_spam'] = y_train2_pred
-labeled_data_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/spambase_train2_labeled.csv'
+labeled_data_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_train2_labeled.csv'
 train2_data.to_csv(labeled_data_path, index=False)
+
+# Predict labels for the train2 dataset and save
+test_data['Predicted_spam'] = y_test_pred
+labeled_data_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_test_labeled.csv'
+test_data.to_csv(labeled_data_path, index=False)
 
 print("New labels assigned and saved successfully.")
 

@@ -1,59 +1,66 @@
 import pandas as pd
+import numpy as np
+path1 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_train2_labeled.csv'
+path2 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_test_labeled.csv'
 
-# Paths to the dataset files
-train1_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_train1.csv'
-train2_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_train2.csv'
-test_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_test.csv'
 
-# Load the datasets
-train1 = pd.read_csv(train1_path)
-train2 = pd.read_csv(train2_path)
-test = pd.read_csv(test_path)
+dat = pd.read_csv(path1)
+dat2 = pd.read_csv(path2)
 
-# Initialize a dictionary to hold bin edges for each feature
-bin_edges = {}
+def custom_binning(dataset1, dataset2, output_path1, output_path2):
+    binned_dataset1 = pd.DataFrame()
+    binned_dataset2 = pd.DataFrame()
+    columns = dataset1.columns[:-2]  # Exclude the last column
 
-# Labels for different numbers of bins
-labels = {
-    1: ["Low"],  # for one bin
-    2: ["Low", "High"],  # for two bins
-    3: ["Low", "Medium", "High"]  # for three bins
-}
+    for i, column in enumerate(columns):
+        print(f"Binning feature {i+1}/{len(columns)}")
+        try:
+            # Create unique bin edges considering the distribution
+            unique_values = np.sort(dataset1[column].unique())
+            if len(unique_values) == 1:
+                # Only one unique value, create a single bin
+                bin_edges = [-np.inf, np.inf]
+                labels = ['Single Value']
+            elif len(unique_values) == 2:
+                # Two unique values, usually 0 and one other, make two bins
+                bin_edges = [-np.inf, unique_values[1], np.inf]
+                labels = ['Zero', 'Non-zero']
+            else:
+                # More than two unique values, create bins based on quartiles including zero handling
+                zero_bin_edge = [0] if 0 in unique_values else []
+                non_zero_values = dataset1[column][dataset1[column] > 0]
+                non_zero_bin_edges = np.percentile(non_zero_values, [33, 66])
+                
+                # Combine edges
+                bin_edges = [-np.inf] + zero_bin_edge + non_zero_bin_edges.tolist() + [np.inf]
+                labels = ['Zero', 'Low', 'Medium', 'High'][0:len(bin_edges)-1]
 
-# Iterate over each numeric column in train1 to apply binning
-for column in train1.select_dtypes(include=['number']).columns:
-    unique_vals = train1[column].nunique()
-    if unique_vals < 3:
-        # Check distinct values for minimum, median, and maximum
-        distinct_edges = sorted(set([train1[column].min(), train1[column].median(), train1[column].max()]))
-        if len(distinct_edges) < 2:
-            train1[column] = "Low"  # or some other single category handling
-            bin_edges[column] = [train1[column].min(), train1[column].max()]
-        else:
-            # Use pd.cut with the distinct edges
-            train1[column], bin_edges[column] = pd.cut(train1[column], bins=distinct_edges, labels=labels[len(distinct_edges)-1], retbins=True, include_lowest=True)
-    else:
-        # Use pd.qcut with dynamic label adjustment
-        binned_data, returned_bins = pd.qcut(train1[column], q=3, duplicates='drop', retbins=True)
-        bin_count = len(returned_bins) - 1  # Calculate actual bin count
-        bin_labels = labels.get(bin_count, ["Low"] * (bin_count - 1) + ["High"])  # Default to simpler labels if not predefined
-        train1[column] = pd.Categorical(binned_data, categories=bin_labels, ordered=True)
-        bin_edges[column] = returned_bins
+            # Apply the binning
+            binned_dataset1[column] = pd.cut(dataset1[column], bins=bin_edges, labels=labels, include_lowest=True)
+            binned_dataset2[column] = pd.cut(dataset2[column], bins=bin_edges, labels=labels, include_lowest=True)
+        except ValueError as e:
+            print(f"Skipping feature {column} due to binning issue: {e}")
 
-# Apply the binning to the secondary training and test data based on train1 bins
-for column in bin_edges:
-    train2[column] = pd.cut(train2[column], bins=bin_edges[column], labels=labels.get(len(bin_edges[column])-1, ["Low", "Medium", "High"]), include_lowest=True)
-    test[column] = pd.cut(test[column], bins=bin_edges[column], labels=labels.get(len(bin_edges[column])-1, ["Low", "Medium", "High"]), include_lowest=True)
+    # Copy the 'spam' column as is to the new DataFrame
+    binned_dataset1['spam'] = dataset1['spam']
+    binned_dataset2['spam'] = dataset2['spam']
 
-# Optional: Save the binned datasets back to CSV if needed
-train1.to_csv(train1_path, index=False)
-train2.to_csv(train2_path, index=False)
-test.to_csv(test_path, index=False)
+    binned_dataset1['Predicted_spam'] = dataset1['Predicted_spam']
+    binned_dataset2['Predicted_spam'] = dataset2['Predicted_spam']
 
-# Display to verify
-print("Primary Training Data with Bins:")
-print(train1.head())
-print("\nSecondary Training Data with Bins:")
-print(train2.head())
-print("\nTest Data with Bins:")
-print(test.head())
+    print(f"Binning completed")
+
+    # Save the binned datasets to CSV files
+    binned_dataset1.to_csv(output_path1, index=False)
+    binned_dataset2.to_csv(output_path2, index=False)
+    print(f"Binned datasets saved to {output_path1} and {output_path2}")
+
+    return binned_dataset1, binned_dataset2
+
+output_path1 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_train2_binned.csv'
+output_path2 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Spambase/spambase_test_binned.csv'
+
+
+binned_dat, binned_dat2 = custom_binning(dat, dat2, output_path1, output_path2)
+
+
