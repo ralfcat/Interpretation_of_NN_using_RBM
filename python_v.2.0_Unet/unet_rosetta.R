@@ -88,10 +88,10 @@ heatmap(as.matrix(x), scale = "none", Colv = F, col = c("white", "black"),
         xlab = "Object Number", ylab = "Rule Rank")
 
 # based on heatmap inspect rules 
-viewRules(rec[c(12, 9, 14, 15, 16, 21, 8, 25, 19, 7, 11, 13),])
+#viewRules(rec[c(12, 9, 14, 15, 16, 21, 8, 25, 19, 7, 11, 13),])
 viewRules(rec[c(22, 10, 17, 20, 18, 23),])
 
-viewRules(rec[c(23,24,30,12,18),])
+viewRules(rec[c(23,21,25,27,30,31,12,11,18,22),])
 
 # extract all objects with those objects
 
