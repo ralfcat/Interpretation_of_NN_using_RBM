@@ -4,16 +4,14 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
 set.seed(0)
 
-# load necessary packages
+# Load necessary packages
 library(dplyr)
 library(R.ROSETTA)
 
-
-
 # ======================= Build RBM on NN output ==============================
 
-# load data
-dat <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Breast_cancer/breastcancer_train2_binned.csv", header = T, colClasses = "character")
+# Load data
+dat <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Breast_cancer/breastcancer_train2_binned.csv", header = TRUE, colClasses = "character")
 
 # Check column names
 print(names(dat))
@@ -21,84 +19,93 @@ print(names(dat))
 # Summary to check for any obvious issues in data
 summary(dat)
 
+# Change names of truth and prediction
+names(dat)[dim(dat)[2] - 1] <- "True"
+names(dat)[dim(dat)[2]] <- "Prediction"
 
-# change names of truth and prediction
-names(dat)[dim(dat)[2] - 1] = "True"
-names(dat)[dim(dat)[2]] = "Prediction"
+# Extract true labels
+truth <- dat[, (dim(dat)[2] - 1)]
 
-# extract true labels
-truth <- dat[,(dim(dat)[2] - 1)]
+# Remove truth label from data frame
+df <- dat[, c(1:(dim(dat)[2] - 2), dim(dat)[2])]
 
-# remove truth label from data frame
-df <- dat[,c(1:(dim(dat)[2] - 2), dim(dat)[2])]
+# Run Rosetta on the data frame
+ros <- rosetta(df, discrete = TRUE, underSample = TRUE, reducer = "Johnson")
 
+testie <- recalculateRules(df, ros$main, discrete = TRUE)
 
-# run Rosetta on all three data frame
-ros <- rosetta(df, discrete = T, underSample = T, reducer = "Johnson")
+# Combine rules and recalculate their quality measures
+comb <- data.frame(rbind(ros$main, ros$main, ros$main)) # Adjust as necessary
+rec <- recalculateRules(df, comb, discrete = TRUE)
+rec <- distinct(rec[rec$pValue <= 0.05, ])
 
+testie_rec <- distinct(testie[testie$pValue <= 0.05, ])
 
-testie <- recalculateRules(df,ros$main, discrete = T)
-# combine rules and recalculate their quality measures
-comb <- data.frame(rbind(ros$main, rev_ros$main, centre_ros$main))
-rec <- recalculateRules(df, comb, discrete = T)
-rec <- distinct(rec[rec$pValue<=0.05,])
-
-testie_rec <- distinct(testie[testie$pValue<=0.05,])
-
-# check rules
+# Check rules
 viewRules(rec)
-
 viewRules(testie_rec)
-
-viewRules(testie_rec[testie_rec$decision == 1,])
-viewRules(testie_rec[testie_rec$decision == 0,])
-
-
+viewRules(testie_rec[testie_rec$decision == 1, ])
+viewRules(testie_rec[testie_rec$decision == 0, ])
 
 # ======================== Test RBM on NN output ==============================
 
-# load test set
-test <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Breast_cancer/breastcancer_test_binned.csv", colClasses = "character", header = T)
+# Load test set
+test <- read.csv("/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Breast_cancer/breastcancer_test_binned.csv", colClasses = "character", header = TRUE)
 
-# extract data and NN label
-test_truth <- test[,(dim(test)[2] - 1)]
-test_df <- test[,c(1:(dim(test)[2] - 2), dim(test)[2])]
+# Extract data and NN label
+test_truth <- test[, (dim(test)[2] - 1)]
+test_df <- test[, c(1:(dim(test)[2] - 2), dim(test)[2])]
 
 names(test_df)[dim(test_df)[2]] <- "Prediction"
 
+# Predict classes for test data
+pred <- predictClass(test_df[, 1:(dim(test_df)[2] - 1)], testie_rec, discrete = TRUE, validate = TRUE, defClass = test_df[, dim(test_df)[2]], normalizeMethod = "rulnum")
+cat("RBM Prediction Accuracy:", pred$accuracy, "\n")
+print(table(pred$out[, c("currentClass", "predictedClass")]))
 
+pred_test <- predictClass(test_df[, 1:(dim(test_df)[2] - 1)], testie_rec, discrete = TRUE, validate = TRUE, defClass = test_df[, dim(test_df)[2]], normalizeMethod = "rulnum")
+cat("RBM Test Prediction Accuracy:", pred_test$accuracy, "\n")
+print(table(pred_test$out[, c("currentClass", "predictedClass")]))
 
-# predict classes for test data
-pred <- predictClass(test_df[,1:(dim(test_df)[2] - 1)], testie_rec, discrete = T, validate = T, defClass = test_df[,dim(test_df)[2]], normalizeMethod = "rulnum")
-pred$accuracy
-table(pred$out[,c("currentClass", "predictedClass")])
-
-pred_test <- predictClass(test_df[,1:(dim(test_df)[2] - 1)], testie_rec, discrete = T, validate = T, defClass = test_df[,dim(test_df)[2]], normalizeMethod = "rulnum")
-pred_test$accuracy
-table(pred_test$out[,c("currentClass", "predictedClass")])
 # ================= Analysis of wrongly classified objects ====================
 
-# extract wrongly classified objects
-wrongObj <- which(df[,dim(df)[2]] != truth)
+# Extract wrongly classified objects
+wrongObj <- which(test_df$Prediction != test_truth)
+cat("Number of wrongly classified objects:", length(wrongObj), "\n")
 
-# get supportSet as list
-supportSet <- lapply(testie_rec$supportSetRHS, function(x){as.numeric(unlist(strsplit(x, ",")))})
+if (length(wrongObj) < 2) {
+  stop("Not enough misclassified objects to create a heatmap.")
+}
 
-# create heatmap to identify misclassified objects in support set of rules
+# Get supportSet as list
+supportSet <- lapply(testie_rec$supportSetRHS, function(x) { as.numeric(unlist(strsplit(x, ","))) })
+
+# Create heatmap to identify misclassified objects in support set of rules
 rules <- list()
-for(i in wrongObj){
-  tmp = which(unlist(lapply(supportSet, function(x){(i %in% x)})))
-  rules[[length(rules) + 1]] <- as.numeric(row.names(testie_rec[tmp,]))
+for (i in wrongObj) {
+  tmp <- which(unlist(lapply(supportSet, function(x) { (i %in% x) })))
+  if (length(tmp) > 0) {
+    rules[[length(rules) + 1]] <- as.numeric(row.names(testie_rec[tmp, ]))
+  }
 }
 
 r <- unlist(rules) %>% unique
 
-x = lapply(rules, function(x){as.numeric(r %in% x)}) %>% data.frame
-names(x) = wrongObj
+if (length(r) < 2) {
+  stop("Not enough rules to create a heatmap.")
+}
+
+x <- lapply(rules, function(x) { as.numeric(r %in% x) }) %>% data.frame
+names(x) <- wrongObj
 row.names(x) <- r
 
-heatmap(as.matrix(x), scale = "none", Colv = F, col = c("white", "black"),
+# Ensure there are enough rows and columns to create a heatmap
+if (nrow(x) < 2 | ncol(x) < 2) {
+  stop("The matrix 'x' must have at least 2 rows and 2 columns to create a heatmap.")
+}
+
+heatmap(as.matrix(x), scale = "none", Colv = FALSE, col = c("white", "black"),
         xlab = "Object Number", ylab = "Rule Rank")
 
-# based on heatmap inspect rules 
-hmap_rules <-viewRules(testie_rec[c(7,127),])
+# Based on heatmap inspect rules
+hmap_rules <- viewRules(testie_rec[c(7, 127), ])

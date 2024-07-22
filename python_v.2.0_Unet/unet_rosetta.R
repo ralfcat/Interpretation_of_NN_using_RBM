@@ -68,6 +68,16 @@ table(pred_test$out[,c("currentClass", "predictedClass")])
 # extract wrongly classified objects
 wrongObj <- which(df[,dim(df)[2]] != truth)
 
+
+# Identify false positives and false negatives
+falsePos <- which(df[,dim(df)[2]] == 1 & truth == 0)
+falseNeg <- which(df[,dim(df)[2]] == 0 & truth == 1)
+
+# Create color vector for ColSideColors
+colSideColors <- rep("white", nrow(df))
+colSideColors[falsePos] <- "green"
+colSideColors[falseNeg] <- "red"
+
 # get supportSet as list
 supportSet <- lapply(rec$supportSetRHS, function(x){as.numeric(unlist(strsplit(x, ",")))})
 
@@ -84,8 +94,12 @@ x = lapply(rules, function(x){as.numeric(r %in% x)}) %>% data.frame
 names(x) = wrongObj
 row.names(x) <- r
 
+# Plot heatmap with ColSideColors
 heatmap(as.matrix(x), scale = "none", Colv = F, col = c("white", "black"),
+        ColSideColors = colSideColors[wrongObj],
         xlab = "Object Number", ylab = "Rule Rank")
+
+
 
 # based on heatmap inspect rules 
 #viewRules(rec[c(12, 9, 14, 15, 16, 21, 8, 25, 19, 7, 11, 13),])
@@ -123,4 +137,132 @@ rec_tmp2 <- recalculateRules(df_tmp2[,1:(dim(df_tmp2)[2] - 1)], ros_tmp2$main, d
 
 viewRules(rec_tmp2[rec_tmp2$decision == 1,])
 viewRules(rec_tmp2[rec_tmp2$decision == 0,])
+
+
+
+####### Compare the misclassified object of the NN to the misclassified of the RBM ##########
+
+rbm_predictions <- pred$out$predictedClass
+
+# Misclassified objects by the NN (original)
+nn_misclassified <- which(test_df$Prediction != test_truth)
+
+# Misclassified objects by the RBM
+rbm_misclassified <- which(rbm_predictions != test_df$Prediction)
+
+# Find common misclassified objects
+common_misclassified <- intersect(nn_misclassified, rbm_misclassified)
+
+# Find misclassified objects unique to each model
+nn_unique_misclassified <- setdiff(nn_misclassified, rbm_misclassified)
+rbm_unique_misclassified <- setdiff(rbm_misclassified, nn_misclassified)
+
+# Summary of comparison
+cat("Number of misclassified objects by NN:", length(nn_misclassified), "\n")
+cat("Number of misclassified objects by RBM:", length(rbm_misclassified), "\n")
+cat("Number of common misclassified objects:", length(common_misclassified), "\n")
+cat("Number of unique misclassified objects by NN:", length(nn_unique_misclassified), "\n")
+cat("Number of unique misclassified objects by RBM:", length(rbm_unique_misclassified), "\n")
+
+# Print the exact misclassified objects
+cat("Misclassified objects by NN:\n", nn_misclassified, "\n")
+cat("Misclassified objects by RBM:\n", rbm_misclassified, "\n")
+cat("Common misclassified objects:\n", common_misclassified, "\n")
+cat("Unique misclassified objects by NN:\n", nn_unique_misclassified, "\n")
+cat("Unique misclassified objects by RBM:\n", rbm_unique_misclassified, "\n")
+
+# Check if "Number of misclassified objects by NN" and "Number of common misclassified objects" are the same instances
+if (all(sort(nn_misclassified) == sort(common_misclassified))) {
+  cat("The misclassified objects by NN are the same as the common misclassified objects.\n")
+} else {
+  cat("The misclassified objects by NN are NOT the same as the common misclassified objects.\n")
+}
+
+# Extract the misclassified instances
+misclassified_instances <- test[common_misclassified, ]
+
+# Check for NAs and remove them if present
+misclassified_instances <- misclassified_instances[complete.cases(misclassified_instances), ]
+names(misclassified_instances)[dim(misclassified_instances)[2] - 1] = "True"
+names(misclassified_instances)[dim(misclassified_instances)[2]] = "Prediction"
+
+# extract true labels
+truth <- misclassified_instances[,(dim(misclassified_instances)[2] - 1)]
+
+# remove truth label from data frame
+misclassified_instances <- misclassified_instances[,c(1:(dim(misclassified_instances)[2] - 2), dim(misclassified_instances)[2])]
+
+# Convert columns to appropriate types if necessary
+misclassified_instances[] <- lapply(misclassified_instances, function(x) {
+  if (is.character(x)) {
+    return(as.factor(x))
+  } else {
+    return(x)
+  }
+})
+
+# Retrain the RBM on the misclassified instances
+ros_misclassified <- rosetta(misclassified_instances, discrete = TRUE, underSample = TRUE, reducer = "Genetic")
+
+# Extract and view the rules used for misclassified instances
+rec_misclassified <- recalculateRules(misclassified_instances[, 1:(dim(misclassified_instances)[2] - 1)], ros_misclassified$main, discrete = TRUE)
+cat("Rules used by RBM for misclassified objects:\n")
+viewRules(rec_misclassified)
+
+
+
+#### Plotting the misclassified objects #####
+
+
+# Install and load necessary packages
+if (!require("VennDiagram")) {
+  install.packages("VennDiagram")
+}
+library(VennDiagram)
+library(grid)
+
+# Create a Venn diagram and save to a temporary file
+venn.plot <- venn.diagram(
+  x = list(
+    "NN Misclassified" = nn_misclassified,
+    "RBM Misclassified" = rbm_misclassified
+  ),
+  category.names = c("NN Misclassified", "RBM Misclassified"),
+  fill = c("red", "blue"),
+  alpha = 0.5,
+  cat.cex = 0, # Set to 0 to hide the names of the circles
+  cex = 1.5,
+  scaled = TRUE, # Scale the circles proportionally to the number of elements
+  main = "Venn Diagram of Misclassified Objects by NN and RBM",
+  filename = NULL # Use NULL to prevent automatic saving to a file
+)
+
+# Function to create a legend grob
+create_legend_grob <- function() {
+  legend_grob <- legendGrob(
+    labels = c("NN Misclassified", "RBM Misclassified"),
+    pch = 15,
+    gp = gpar(col = c("red", "blue"), fill = c("red", "blue")),
+    nrow = 1,
+    byrow = TRUE
+  )
+  legend_grob
+}
+
+# Plot the Venn diagram in RStudio and add legend
+grid.newpage()
+grid.draw(venn.plot)
+
+# Create the legend grob and draw it
+legend_grob <- create_legendgrob()
+pushViewport(viewport(x = 1, y = 1.2, just = c("right", "top")))
+grid.draw(legend_grob)
+popViewport()
+
+
+# Create the legend grob and draw it
+legend_grob <- create_legend_grob()
+pushViewport(viewport(x = 0.5, y = 0.5, just = c("right", "top")))
+grid.draw(legend_grob)
+popViewport()
 

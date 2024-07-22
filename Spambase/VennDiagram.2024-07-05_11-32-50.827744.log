@@ -1,0 +1,24 @@
+INFO [2024-07-05 11:32:50] $x
+INFO [2024-07-05 11:32:50] list(`NN Misclassified` = nn_misclassified, `RBM Misclassified` = rbm_misclassified)
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $category.names
+INFO [2024-07-05 11:32:50] c("NN Misclassified", "RBM Misclassified")
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $fill
+INFO [2024-07-05 11:32:50] c("red", "blue")
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $alpha
+INFO [2024-07-05 11:32:50] [1] 0.5
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $cat.cex
+INFO [2024-07-05 11:32:50] [1] 0
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $cex
+INFO [2024-07-05 11:32:50] [1] 1.3
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $main
+INFO [2024-07-05 11:32:50] [1] "Venn Diagram of Misclassified Objects by NN and RBM"
+INFO [2024-07-05 11:32:50] 
+INFO [2024-07-05 11:32:50] $filename
+INFO [2024-07-05 11:32:50] NULL
+INFO [2024-07-05 11:32:50] 

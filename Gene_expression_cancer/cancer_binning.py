@@ -19,7 +19,7 @@ def equal_frequency_binning(dataset1, dataset2, output_path1, output_path2):
     
     binned_dataset1 = pd.DataFrame()
     binned_dataset2 = pd.DataFrame()
-
+    bin_ranges = {}
     for column in dataset1.columns:
         data_clean = dataset1[column].dropna()
         if data_clean.nunique() > 1:  # Ensure there are at least two unique values to form bins
@@ -31,6 +31,8 @@ def equal_frequency_binning(dataset1, dataset2, output_path1, output_path2):
                 labels = ['Low', 'Medium', 'High'][:labels_needed]  # Slice to fit number of bins
                 binned_dataset1[column] = pd.cut(dataset1[column], bins=bins, labels=labels, include_lowest=True)
                 binned_dataset2[column] = pd.cut(dataset2[column], bins=bins, labels=labels, include_lowest=True)
+
+                bin_ranges[column] = bins
             except Exception as e:
                 print(f"Error binning column {column}: {e}")
                 continue
@@ -41,7 +43,7 @@ def equal_frequency_binning(dataset1, dataset2, output_path1, output_path2):
 
     # Reattach 'diagnosis' and 'Prediction'
     binned_dataset1['Class'] = diagnosis1
-    binned_dataset2['Classc'] = diagnosis2
+    binned_dataset2['Class'] = diagnosis2
     binned_dataset1['Prediction'] = prediction1
     binned_dataset2['Prediction'] = prediction2
 
@@ -49,11 +51,20 @@ def equal_frequency_binning(dataset1, dataset2, output_path1, output_path2):
     binned_dataset2.to_csv(output_path2, index=False)
     print(f"Binned datasets saved to {output_path1} and {output_path2}")
 
-    return binned_dataset1, binned_dataset2
+    return binned_dataset1, binned_dataset2, bin_ranges
 
 # Define the output paths
 output_path1 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Gene_expression_cancer/data/cancer_genexp_train2_binned.csv'
 output_path2 = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Gene_expression_cancer/data/cancer_genexp_test_binned.csv'
 
 # Apply the binning function
-binned_dat, binned_dat2 = equal_frequency_binning(dat, dat2, output_path1, output_path2)
+binned_dat, binned_dat2, bin_ranges = equal_frequency_binning(dat, dat2, output_path1, output_path2)
+
+print(bin_ranges)
+
+gene_bin_ranges = bin_ranges.get("gene_7964", None)
+
+if gene_bin_ranges is not None:
+    print(f"Bin ranges for 'gene_7964': {gene_bin_ranges}")
+else:
+    print("Bin ranges for 'gene_7964' were not found.")
