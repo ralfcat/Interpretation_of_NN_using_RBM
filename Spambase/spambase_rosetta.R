@@ -7,6 +7,7 @@ set.seed(0)
 # load necessary packages
 library(dplyr)
 library(R.ROSETTA)
+library(pheatmap)
 
 # ======================= name preprocessing ==============================
 

@@ -1,0 +1,71 @@
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+
+# Load the datasets
+train_set = pd.read_csv('train_set.csv')
+val_set = pd.read_csv('val_set.csv')
+test_set = pd.read_csv('test_set.csv')
+
+# Combine train and validation sets
+train_val_set = pd.concat([train_set, val_set])
+
+# Separate the features (X) and the target (y)
+X_train_val = train_val_set.drop(columns=['Diabetes_binary'])
+y_train_val = train_val_set['Diabetes_binary']
+
+X_test = test_set.drop(columns=['Diabetes_binary'])
+y_test = test_set['Diabetes_binary']
+
+# Standardize the features (mean=0, variance=1)
+scaler = StandardScaler()
+X_train_val = scaler.fit_transform(X_train_val)
+X_test = scaler.transform(X_test)
+
+# Define an improved neural network model
+model = Sequential([
+    Dense(128, input_shape=(X_train_val.shape[1],), activation='relu'),
+    BatchNormalization(),
+    Dropout(0.3),  # Dropout layer to prevent overfitting
+    Dense(64, activation='relu'),
+    BatchNormalization(),
+    Dropout(0.3),
+    Dense(32, activation='relu'),
+    BatchNormalization(),
+    Dropout(0.3),
+    Dense(16, activation='relu'),
+    Dense(1, activation='sigmoid')  # Single output node for binary classification
+])
+
+# Compile the model with a different optimizer
+optimizer = Adam(learning_rate=0.0001)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+# Implement EarlyStopping to avoid overfitting
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
+# Train the model with early stopping
+history = model.fit(X_train_val, y_train_val, epochs=100, batch_size=64, validation_split=0.1, callbacks=[early_stopping])
+
+# Predict on the test set and validation set
+test_pred = (model.predict(X_test) > 0.5).astype("int32")
+val_pred = (model.predict(scaler.transform(val_set.drop(columns=['Diabetes_binary']))) > 0.5).astype("int32")
+
+# Add the predicted labels as a new column
+test_set['predicted_label'] = test_pred
+val_set['predicted_label'] = val_pred
+
+# Save the updated datasets with predictions
+test_set.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/test_set_with_predictions.csv', index=False)
+val_set.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/val_set_with_predictions.csv', index=False)
+
+# Evaluate the model on the test set
+test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
+
+# Print test accuracy
+print(f"Test Loss: {test_loss}")
+print(f"Test Accuracy: {test_accuracy}")

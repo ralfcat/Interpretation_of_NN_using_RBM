@@ -102,3 +102,5 @@ heatmap(as.matrix(x), scale = "none", Colv = F, col = c("white", "black"),
 
 # based on heatmap inspect rules 
 hmap_rules <-viewRules(testie_rec[c(7,127),])
+
+

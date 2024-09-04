@@ -109,3 +109,32 @@ heatmap(as.matrix(x), scale = "none", Colv = FALSE, col = c("white", "black"),
 
 # Based on heatmap inspect rules
 hmap_rules <- viewRules(testie_rec[c(7, 127), ])
+
+
+
+##### view rules ####
+
+
+viewRules(testie_rec[r, ])
+
+
+##### RE RUN ROSETTA BASED ON THE RULES #####
+
+df_tmp1 <- filter(dat, c(concave.points_worst == "Low"))
+
+
+df_tmp1[,c("True", "Prediction")] %>% table
+df_tmp2[,c("True", "Prediction")] %>% table
+
+
+# run Rosetta again to find further differences that might help to distinguish between those objects
+
+ros_tmp1 <- rosetta(df_tmp1[,1:(dim(df_tmp1)[2] - 1)], discrete = T, underSample = T, reducer = "Johnson")
+ros_tmp1$quality
+
+rec_tmp1 <- recalculateRules(df_tmp1[,1:(dim(df_tmp1)[2] - 1)], ros_tmp1$main, discrete = T)
+
+viewRules(rec_tmp1[rec_tmp1$decision == 1,])
+viewRules(rec_tmp1[rec_tmp1$decision == 0,])
+
+

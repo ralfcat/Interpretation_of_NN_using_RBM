@@ -1,0 +1,30 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Load the dataset
+file_path = '/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/diabetes_binary_health_indicators_BRFSS2015.csv'
+data = pd.read_csv(file_path)
+
+# Filter only the binary classes (0 and 1)
+data = data[data['Diabetes_binary'] <= 1]
+
+# Split the data into 60% training, 30% validation, 10% testing
+X_train, X_temp, y_train, y_temp = train_test_split(
+    data.drop(columns=['Diabetes_binary']), data['Diabetes_binary'], test_size=0.4, random_state=42, stratify=data['Diabetes_binary']
+)
+
+X_val, X_test, y_val, y_test = train_test_split(
+    X_temp, y_temp, test_size=0.25, random_state=42, stratify=y_temp
+)
+
+# Combine the features and target back together for each subset
+train_set = pd.concat([X_train, y_train], axis=1)
+val_set = pd.concat([X_val, y_val], axis=1)
+test_set = pd.concat([X_test, y_test], axis=1)
+
+# Save each subset to a CSV file
+train_set.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/train_set.csv', index=False)
+val_set.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/val_set.csv', index=False)
+test_set.to_csv('/Users/victorenglof/Documents/GitHub/Interpretation_of_NN_using_RBM/Diabetes/test_set.csv', index=False)
+
+print("Datasets have been split and saved as 'train_set.csv', 'val_set.csv', and 'test_set.csv'.")
